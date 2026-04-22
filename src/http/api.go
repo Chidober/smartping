@@ -13,6 +13,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"sync"
@@ -36,6 +37,9 @@ func configApiRoutes() {
 		if !AuthAgentIp(r.RemoteAddr, false) {
 			if nconf.Alert["SendEmailPassword"] != "" {
 				nconf.Alert["SendEmailPassword"] = "samepasswordasbefore"
+			}
+			if nconf.Alert["WebhookSecret"] != "" {
+				nconf.Alert["WebhookSecret"] = "samepasswordasbefore"
 			}
 		}
 		//fmt.Print(g.Cfg.Alert["SendEmailPassword"])
@@ -418,6 +422,13 @@ func configApiRoutes() {
 			RenderJson(w, preout)
 			return
 		}
+		if webhookURL, ok := nconfig.Alert["WebhookURL"]; ok && strings.TrimSpace(webhookURL) != "" {
+			if _, err := url.ParseRequestURI(strings.TrimSpace(webhookURL)); err != nil {
+				preout["info"] = "Webhook地址不合法!"
+				RenderJson(w, preout)
+				return
+			}
+		}
 		//Network
 		for k, network := range nconfig.Network {
 			if !ValidIP4(network.Addr) || !ValidIP4(k) {
@@ -499,6 +510,9 @@ func configApiRoutes() {
 		if nconfig.Alert["SendEmailPassword"] == "samepasswordasbefore" {
 			nconfig.Alert["SendEmailPassword"] = g.Cfg.Alert["SendEmailPassword"]
 		}
+		if nconfig.Alert["WebhookSecret"] == "samepasswordasbefore" {
+			nconfig.Alert["WebhookSecret"] = g.Cfg.Alert["WebhookSecret"]
+		}
 		g.Cfg = nconfig
 		g.SelfCfg = g.Cfg.Network[g.Cfg.Addr]
 		saveerr := g.SaveConfig()
@@ -543,6 +557,43 @@ func configApiRoutes() {
 		}
 
 		err := funcs.SendMail(r.Form["SendEmailAccount"][0], r.Form["SendEmailPassword"][0], r.Form["EmailHost"][0], r.Form["RevcEmailList"][0], "报警测试邮件 - SmartPing", "报警测试邮件")
+		if err != nil {
+			preout["info"] = err.Error()
+			RenderJson(w, preout)
+			return
+		}
+		preout["status"] = "true"
+		RenderJson(w, preout)
+	})
+
+	//发送测试Webhook（JSON 与真实报警 Webhook 完全一致，仅数据来源为模拟）
+	http.HandleFunc("/api/sendwebhooktest.json", func(w http.ResponseWriter, r *http.Request) {
+		if !AuthUserIp(r.RemoteAddr) && !AuthAgentIp(r.RemoteAddr, true) {
+			o := "Your ip address (" + r.RemoteAddr + ")  is not allowed to access this site!"
+			http.Error(w, o, 401)
+			return
+		}
+		preout := make(map[string]string)
+		r.ParseForm()
+		preout["status"] = "false"
+		if len(r.Form["WebhookURL"]) == 0 || strings.TrimSpace(r.Form["WebhookURL"][0]) == "" {
+			preout["info"] = "Webhook地址不能为空!"
+			RenderJson(w, preout)
+			return
+		}
+		webhookURL := strings.TrimSpace(r.Form["WebhookURL"][0])
+		if _, err := url.ParseRequestURI(webhookURL); err != nil {
+			preout["info"] = "Webhook地址不合法!"
+			RenderJson(w, preout)
+			return
+		}
+		webhookSecret := ""
+		if len(r.Form["WebhookSecret"]) > 0 {
+			webhookSecret = strings.TrimSpace(r.Form["WebhookSecret"][0])
+		}
+		mockLog, mockRule := funcs.MockWebhookAlertPair()
+		payload := funcs.BuildAlertWebhookPayload(mockLog, mockRule)
+		err := funcs.SendWebhook(webhookURL, webhookSecret, payload)
 		if err != nil {
 			preout["info"] = err.Error()
 			RenderJson(w, preout)

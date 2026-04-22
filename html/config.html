@@ -161,6 +161,21 @@
                 </div> <!-- /controls -->
             </div> <!-- /control-group -->
 
+              <hr style="clear:both;">
+              <h4>报警Webhook<button style="float: right" onclick="sendWebhookTest(this)">发送测试Webhook</button></h4>
+              <p class="muted" style="font-size:12px;margin-bottom:8px;">测试请求 JSON 与真实拓扑报警 Webhook 字段一致（模拟目标与 MTR 轨迹）。</p>
+              <div class="control-group">
+                  <label class="control-label" for="WebhookURL">Webhook地址</label>
+                  <div class="controls">
+                      <input type="text" style="width:97%" id="WebhookURL" value="" placeholder="https://openclaw.example/webhook/smartping">
+                  </div>
+              </div>
+              <div class="control-group">
+                  <label class="control-label" for="WebhookSecret">Webhook密钥(可选)</label>
+                  <div class="controls">
+                      <input type="password" style="width:97%" id="WebhookSecret" value="">
+                  </div>
+              </div>
 
               <hr style="clear:both;">
 
@@ -884,6 +899,30 @@
     }
     */
     //发送邮件测试
+    function sendWebhookTest(obj){
+        $(obj).html("测试Webhook发送中...")
+        data = {}
+        data["WebhookURL"] = $("#WebhookURL").val();
+        data["WebhookSecret"] = $("#WebhookSecret").val();
+        $.ajax({
+            dataType: "json",
+            type: 'POST',
+            url: "/api/sendwebhooktest.json",
+            data: data,
+            success: function( retdata ) {
+                if (retdata["status"]=="true"){
+                    alert("测试Webhook发送成功!")
+                }else{
+                    alert("测试Webhook发送失败 ("+retdata["info"]+")")
+                }
+                $(obj).html("发送测试Webhook")
+            },
+            timeout: 65*1000
+        }).fail( function( xhr, status ) {
+            alert("测试Webhook发送失败 (API错误!)")
+            $(obj).html("发送测试Webhook")
+        });
+    }
     function sendMailTest(obj){
         $(obj).html("测试邮件发送中(最长1分钟,请等待)...")
         data = {}
@@ -1037,6 +1076,8 @@
         config["Alert"]["SendEmailAccount"] = $("#SendEmailAccount").val();
         config["Alert"]["SendEmailPassword"] = $("#SendEmailPassword").val();
         config["Alert"]["RevcEmailList"] = $("#RevcEmailList").val();
+        config["Alert"]["WebhookURL"] = $("#WebhookURL").val();
+        config["Alert"]["WebhookSecret"] = $("#WebhookSecret").val();
         config["Authiplist"] = $("#Authiplist").val();
         config["Toollimit"] = parseInt($("#Toollimit").val());
         data = {}
@@ -1160,6 +1201,10 @@
             $("#SendEmailAccount").val(config["Alert"]["SendEmailAccount"]);
             $("#SendEmailPassword").val(config["Alert"]["SendEmailPassword"]);
             $("#RevcEmailList").val(config["Alert"]["RevcEmailList"]);
+            if (config["Alert"]["WebhookURL"] === undefined) { config["Alert"]["WebhookURL"] = ""; }
+            if (config["Alert"]["WebhookSecret"] === undefined) { config["Alert"]["WebhookSecret"] = ""; }
+            $("#WebhookURL").val(config["Alert"]["WebhookURL"]);
+            $("#WebhookSecret").val(config["Alert"]["WebhookSecret"]);
             $("#Authiplist").val(config["Authiplist"]);
             $("#Toollimit").val(config["Toollimit"]);
             selfconfig=config["Network"][config["Addr"]]

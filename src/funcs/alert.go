@@ -50,6 +50,9 @@ func StartAlert() {
 				if g.Cfg.Alert["SendEmailAccount"] != "" && g.Cfg.Alert["SendEmailPassword"] != "" && g.Cfg.Alert["EmailHost"] != "" && g.Cfg.Alert["RevcEmailList"] != "" {
 					go AlertSendMail(l)
 				}
+				if strings.TrimSpace(g.Cfg.Alert["WebhookURL"]) != "" {
+					go AlertSendWebhook(l, v)
+				}
 			}
 
 		}

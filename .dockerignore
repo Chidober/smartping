@@ -1,0 +1,5 @@
+.git
+var
+bin
+*.tar.gz
+.DS_Store

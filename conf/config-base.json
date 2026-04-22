@@ -23,7 +23,9 @@
 		"EmailHost": "",
 		"RevcEmailList": "",
 		"SendEmailAccount": "",
-		"SendEmailPassword": ""
+		"SendEmailPassword": "",
+		"WebhookURL": "",
+		"WebhookSecret": ""
 	},
 	"Network": {
 		"1.2.3.4": {

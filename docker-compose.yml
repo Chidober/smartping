@@ -1,0 +1,46 @@
+# SmartPing — use either development or production (Compose profiles).
+#
+# Production (detached, restart policy, persisted DB):
+#   docker compose --profile production up -d
+#
+# Development (bind mounts for conf/html/db, rebuild image after code changes):
+#   docker compose --profile development up
+#
+# Build only:
+#   docker compose build
+
+name: smartping
+
+x-smartping-common: &smartping-common
+  build:
+    context: .
+    dockerfile: Dockerfile
+  image: smartping:local
+  cap_add:
+    - NET_RAW
+  ports:
+    - "${SMARTPING_PORT:-8899}:8899"
+
+services:
+  smartping:
+    <<: *smartping-common
+    profiles:
+      - production
+    restart: unless-stopped
+    volumes:
+      - smartping-db:/app/db
+
+  smartping-dev:
+    <<: *smartping-common
+    profiles:
+      - development
+    restart: "no"
+    volumes:
+      - ./conf:/app/conf
+      - ./html:/app/html
+      - ./db:/app/db
+
+volumes:
+  smartping-db:
+
+# docker compose --profile development up
